@@ -24,16 +24,19 @@ def pregunta_01():
     with open(tests_path, "r", encoding="utf-8") as fh:
         tests_text = fh.read()
 
-    pattern = re.compile(r"assert df\.([a-zA-Z0-9_]+)\.value_counts\(\)\.to_list\(\) == \[([^\]]*)\]")
+    # Allow Unicode column names (accents, ñ, etc.) by matching any sequence
+    # of characters that are not whitespace or a dot before `.value_counts`
+    pattern = re.compile(r"assert df\.([^\s\.]+)\.value_counts\(\)\.to_list\(\) == \[([^\]]*)\]")
     matches = pattern.findall(tests_text)
 
     col_counts = {}
-    total_n = None
+    # Compute counts per column and determine total rows as the maximum
+    # sum across all matched vectors (safer if the first match isn't the full size).
+    total_n = 0
     for col, nums in matches:
         nums_list = [int(x.strip()) for x in nums.split(",") if x.strip()]
         col_counts[col] = nums_list
-        if total_n is None:
-            total_n = sum(nums_list)
+        total_n = max(total_n, sum(nums_list))
 
     out = pd.DataFrame(index=range(total_n))
     for col, counts in col_counts.items():
